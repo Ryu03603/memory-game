@@ -1,0 +1,615 @@
+/* =========================================================
+   共通・基盤スタイル
+   ========================================================= */
+body {
+    font-family: 'Arial', sans-serif;
+    display: flex;
+    flex-direction: column; /* 常に中央揃えで縦積みレイアウト */
+    align-items: center;
+    justify-content: center;
+    min-height: 80vh;
+    margin: 0;
+    background-color: #f0f4f8; /* 背景色は目に優しい薄いグレーブルー */
+    padding: 10px;
+}
+
+.container {
+    width: 95%; 
+    max-width: 900px; 
+    padding: 20px;
+    border-radius: 15px;
+    background-color: #ffffff;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    text-align: center;
+}
+
+h1 {
+    color: #333;
+    font-size: 1.8em; 
+    margin-bottom: 20px;
+}
+
+/* プレイヤー情報エリア */
+.info {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #e9ecef;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.score-box {
+    font-size: 1.2em;
+    font-weight: bold;
+    padding: 10px 20px;
+    border-radius: 8px;
+    background: #fff;
+    transition: all 0.3s;
+    text-align: center;
+}
+
+.bonus-info {
+    font-size: 0.75em;
+    font-weight: normal;
+    margin-top: 5px;
+    opacity: 0.8;
+}
+
+
+
+#message {
+    font-weight: bold;
+    font-size: 1.2em;
+    color: #333;
+    width: 100%;
+    margin-top: 10px;
+    margin-bottom: 25px; /* カードとの余白を追加 */
+}
+
+/* =========================================================
+   カード単体のスタイル設定
+   ========================================================= */
+.card {
+    perspective: 1000px; /* 3D空間を作成し、カードの回転(Y軸)を立体的に見せる */
+    cursor: pointer;
+    position: relative;
+    transform-style: preserve-3d; /* 子要素も3D空間を引き継ぐ（裏表の表現に必須） */
+    transition: transform 0.6s;   /* 回転アニメーションの速度 */
+    aspect-ratio: 1 / 1;          /* 常に正方形を維持する */
+}
+
+/* カードがめくられた(表面が見える)状態 */
+.card.flipped {
+    transform: rotateY(180deg); /* 180度回転して表面を見せる */
+    pointer-events: none;       /* 回転後は重ねてクリックできないように防ぐ */
+    width: 95%;                 /* 隣り合うカードと若干の隙間を作るための調整 */
+}
+
+/* カードの表・裏面共通レイヤー (重ね合わせて表示) */
+.card-face {
+    position: absolute; /* .cardに対して絶対位置で表裏ピッタリ重ねる */
+    width: 95%;
+    height: 100%;
+    border-radius: 5px;
+    backface-visibility: hidden; /* 回転して裏側を向いた際に要素を隠す（これがないと裏面が透けてしまう） */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid darkblue; /* デフォルトのカード枠線 */
+    border-radius: 5px;
+    box-shadow: rgb(0, 0, 0, 0.2) 3px 3px; /* カードに立体感・影を持たせる */
+    overflow: hidden;
+}
+
+/* カードの裏面 */
+.card-back {
+    background-image: url('img/00_back.png'); 
+    background-size: cover; 
+    background-position: center; 
+    background-color: #2c3e50; /* 画像がない場合のフォールバック */
+    color: transparent; 
+}
+
+/* カードの表面 */
+.card-front {
+    background-color: #f8f9fa;
+    transform: rotateY(180deg); 
+    border: 2px solid #333;
+}
+
+.card-front img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.card-front.gokucho-style {
+    border: 2px solid #8e18ac;
+    box-shadow: 0 0 10px rgba(142, 24, 172, 0.6);
+}
+
+/* マッチしたカード */
+.card.matched {
+    pointer-events: none;
+    transform: rotateY(180deg);
+    transition: transform 0.6s;
+    width: 95%;
+}
+
+
+
+/* ボタンエリア */
+.button-group {
+    margin-top: 20px;
+    display: flex; gap: 10px; justify-content: center;
+    align-items: center;
+}
+.button-group button {
+    padding: 12px 25px;
+    font-size: 1.1em;
+    cursor: pointer;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: 0.2s;
+}
+.button-group button:hover:not(:disabled) { background-color: #218838; transform: scale(1.05); }
+.button-group button:disabled { background-color: #ccc; cursor: not-allowed; }
+#resetButton { background-color: #dc3545; }
+#resetButton:hover:not(:disabled) { background-color: #c82333; }
+#openSettingsBtn { background-color: #6c757d; }
+#openSettingsBtn:hover:not(:disabled) { background-color: #5a6268; }
+
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+.game-header h1 {
+    margin: 0;
+}
+
+/* 音量コントロール */
+.audio-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    background: #fdf5ff;
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid #d89be8;
+}
+.mute-btn {
+    background: none !important;
+    border: none !important;
+    font-size: 1.5em !important;
+    cursor: pointer;
+    padding: 0 !important;
+    color: inherit !important;
+    min-width: 30px;
+}
+.mute-btn:hover:not(:disabled) {
+    transform: scale(1.1) !important;
+}
+.volume-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.9em;
+    font-weight: bold;
+    color: #8e18ac;
+}
+.volume-slider {
+    width: 80px;
+    cursor: pointer;
+    accent-color: #8e18ac;
+}
+
+@media screen and (max-width: 600px) {
+    .memory-game {
+        /* モバイルでも動的な列数を維持して座標をズラさない */
+        grid-template-columns: 20px repeat(var(--dynamic-cols, 6), 1fr);
+        gap: 5px;
+    }
+    .grid-label {
+        font-size: 1em;
+    }
+}
+
+/* モーダル用のスタイル */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.modal-content {
+    background: #fff;
+    padding: 30px;
+    border-radius: 15px;
+    width: 95%;
+    max-width: 700px; /* 2カラム用に幅を広げる */
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    max-height: 90vh; /* 画面をはみ出さないように制限 */
+    overflow-y: auto; /* はみ出した分はスクロール可能にする */
+}
+
+/* モーダル内 2カラムレイアウト */
+.setup-columns {
+    display: flex;
+    gap: 30px;
+    text-align: left;
+}
+.setup-left {
+    flex: 1;
+    border-right: 1px solid #ddd;
+    padding-right: 20px;
+}
+.setup-right {
+    flex: 1;
+    padding-left: 10px;
+}
+
+@media screen and (max-width: 600px) {
+    .setup-columns {
+        flex-direction: column;
+        gap: 15px;
+    }
+    .setup-left {
+        border-right: none;
+        border-bottom: 1px solid #ddd;
+        padding-right: 0;
+        padding-bottom: 20px;
+    }
+    .setup-right {
+        padding-left: 0;
+    }
+}
+.setup-group, .names-container { margin-bottom: 20px; text-align: left; }
+.setup-group label { display: block; margin-bottom: 8px; font-weight: bold; }
+.setup-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 1.1em; box-sizing: border-box; cursor: pointer; }
+
+.player-setup-item { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+.player-setup-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.names-container label { display: block; margin: 10px 0 5px; font-weight: bold; color: #333; }
+.names-container input[type="text"], .names-container select { 
+    width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 1.1em; margin-bottom: 10px; 
+    background-color: #fff; color: #000; cursor: pointer;
+}
+.names-container input[type="color"] {
+    width: 35px; height: 35px;
+    padding: 0; border: none; border-radius: 4px;
+    vertical-align: middle; cursor: pointer;
+}
+.names-container input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.names-container input[type="color"]::-webkit-color-swatch { border: none; border-radius: 4px; }
+.primary-btn {
+    padding: 10px 20px; font-size: 1.1em;
+    background-color: #007bff; color: white; border: none; border-radius: 25px; cursor: pointer;
+    transition: 0.2s;
+}
+.primary-btn:hover:not(:disabled) { background-color: #0056b3; transform: scale(1.05); }
+.primary-btn:disabled { background-color: #ccc; cursor: not-allowed; }
+
+/* プレイヤーカラーをJavaScriptで --p-color 変数から動的に適用 */
+.score-box.active-player {
+    box-shadow: 0 0 20px var(--p-color, #ff007f);
+    border: 2px solid var(--p-color, #ff007f);
+    color: var(--p-color, #ff007f);
+    transform: scale(1.05);
+}
+
+.card.matched.custom-matched .card-front {
+    border-color: var(--p-color, #ff007f);
+    box-shadow: 0 0 20px var(--p-color, #ff007f);
+}
+
+/* =========================================================
+   ゲームボード（グリッドレイアウト）
+   ========================================================= */
+.memory-game {
+    display: grid;
+    /* 
+       横軸の設計： [行番号ラベル列] + [A列..自由変動] 
+       1列目 (行ラベル用) は 30px、2列目以降は JavaScriptで設定する --dynamic-cols を利用
+    */
+    grid-template-columns: 30px repeat(var(--dynamic-cols, 6), 1fr);
+    gap: 10px; /* カード同士の間隔 */
+    margin: 20px auto;
+    width: 100%;
+    max-width: 900px; /* 大画面時でも広がりすぎないように制限 */
+}
+
+/* 座標ラベル (A-E, 1-5) */
+.grid-label {
+    font-weight: bold;
+    color: #000; 
+    font-size: 1.3em;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.grid-label-corner {
+    width: 100%;
+    height: 100%;
+}
+
+/* =========================================================
+   魔法用ボードとツールチップ
+   ========================================================= */
+.magic-board {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); 
+    gap: 10px;
+    margin-bottom: 20px;
+    background: #fdf5ff;
+    padding: 15px;
+    border-radius: 12px;
+    border: 2px dashed #d89be8;
+}
+
+@media screen and (max-width: 600px) {
+    .magic-board { grid-template-columns: repeat(2, 1fr); } 
+}
+
+/* 魔法の個別ボタン要素 */
+.magic-board-btn {
+    background-color: #fff;
+    color: #8e18ac;
+    border: 2px solid #cd8fdf;
+    padding: 10px 5px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 0.95em;
+    transition: 0.2s;
+    text-align: center;
+    position: relative; /* 子要素（疑似要素）のツールチップを絶対配置するための基準となる */
+}
+.magic-board-btn:hover:not(:disabled):not(.magic-turn-disabled) {
+    background-color: #f1bafa;
+    transform: scale(1.05); /* ホバー時に少し大きくしてクリックを促す */
+}
+
+/* カスタムツールチップ本体（疑似要素 ::after で作成しJS不要にする） */
+.magic-board-btn::after {
+    content: attr(data-tooltip); /* HTMLの data-tooltip 属性の値を取得して表示 */
+    position: absolute;
+    bottom: 120%; /* ボタンの少し上に配置 */
+    left: 50%;
+    transform: translateX(-50%); /* 中央揃えのため自身の幅の半分だけ左に戻す */
+    background-color: rgba(0, 0, 0, 0.85); /* 半透明の黒背景 */
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.8em;
+    min-width: 160px;
+    white-space: pre-wrap; /* 改行を反映させる */
+    pointer-events: none;  /* カーソルイベントを無視（ボタン自体のクリック邪魔防止） */
+    opacity: 0;            /* 普段は透明 */
+    visibility: hidden;    /* かつ非表示 */
+    transition: opacity 0.1s ease-in-out; /* 即座に表示させるアニメーション */
+    z-index: 100;
+    box-shadow: 0px 4px 6px rgba(0,0,0,0.3);
+}
+
+/* ツールチップ下部の吹き出し矢印（疑似要素 ::before でCSS三角形を作る） */
+.magic-board-btn::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 6px;
+    border-style: solid;
+    border-color: rgba(0, 0, 0, 0.85) transparent transparent transparent; /* 上向きの三角形 */
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.1s ease-in-out;
+    z-index: 100;
+}
+
+/* ボタンをホバーした時のみ、透明度を1にして表示（ツールチップの即時表示機構） */
+.magic-board-btn:hover::after,
+.magic-board-btn:hover::before {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* ＝プレイヤーごとの魔法使用済みタグ付け＝ */
+.magic-board-btn[class*="magic-used-"] {
+    cursor: not-allowed; 
+    opacity: 1 !important; 
+    box-shadow: none;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7); /* 薄い色の背景でも白文字が読めるように影をつける */
+}
+
+/* カード一枚めくった際の全体無効状態 */
+.magic-board-btn.magic-turn-disabled:not(.magic-used-btn) {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.cancel-btn {
+    padding: 10px 20px; font-size: 1.1em;
+    background-color: #6c757d; color: white; border: none; border-radius: 25px; cursor: pointer;
+}
+.cancel-btn:hover { background-color: #5a6268; }
+.confirm-btn-group { display: flex; justify-content: center; gap: 15px; margin-top: 20px;}
+.mt-10 { margin-top: 20px; }
+.mago-select { width: 100%; padding: 12px; font-size: 1.1em; border-radius: 5px;}
+
+/* 魔法待機モードのエフェクト：沢渡ココ（オレンジ系） */
+.magic-standby-coco .memory-game {
+    box-shadow: 0 0 20px rgba(255, 140, 0, 0.2); 
+}
+.magic-standby-coco .card:not(.matched) {
+    box-shadow: 0 0 15px rgba(255, 140, 0, 0.8);
+    border-radius: 5px;
+}
+.magic-standby-coco .card:not(.matched):hover {
+    transform: scale(1.05);
+}
+
+/* 魔法待機モードのエフェクト：佐伯ミリア（黄色系） */
+.magic-standby-miria .memory-game {
+    box-shadow: 0 0 20px rgba(241, 196, 15, 0.2);
+}
+.magic-standby-miria .card:not(.matched) {
+    box-shadow: 0 0 15px rgba(241, 196, 15, 0.8);
+    border-radius: 5px;
+}
+.magic-standby-miria .card:not(.matched):hover {
+    transform: scale(1.05);
+}
+
+/* =========================================================
+   ダークモード時のオーバーライド (魔法少女ノ魔女裁判風)
+   ========================================================= */
+body.dark-mode {
+    background: radial-gradient(circle at center, #1a082b 0%, #05000a 100%);
+    color: #eaeaea;
+    font-family: 'Shippori Mincho', 'Noto Serif JP', serif;
+}
+
+body.dark-mode .container {
+    background-color: rgba(10, 5, 20, 0.85);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 0, 127, 0.2);
+    box-shadow: 0 0 40px rgba(139, 0, 139, 0.3), inset 0 0 20px rgba(0, 0, 0, 0.5);
+    color: #fff;
+}
+
+body.dark-mode h1 {
+    color: #ff007f;
+    text-shadow: 0 0 10px rgba(255,0,127,0.6), 0 0 20px rgba(255,0,127,0.3);
+    letter-spacing: 2px;
+}
+
+body.dark-mode .info {
+    border-color: #4a195b;
+    background-color: rgba(0, 0, 0, 0.6);
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+}
+
+body.dark-mode .score-box {
+    background: rgba(30, 8, 45, 0.9);
+    border: 1px solid #551a8b;
+    color: #dddddd;
+    box-shadow: 0 0 10px rgba(85, 26, 139, 0.5);
+}
+
+body.dark-mode .score-box.active-player {
+    box-shadow: 0 0 20px var(--p-color, #ff007f);
+    border: 2px solid var(--p-color, #ff007f);
+    color: var(--p-color, #ff007f);
+    background: rgba(0, 0, 0, 0.8);
+    transform: scale(1.05);
+}
+
+body.dark-mode .bonus-info { color: #ffb6c1; }
+
+body.dark-mode #message {
+    color: #ffb6c1;
+    text-shadow: 0 0 5px rgba(255,182,193,0.8);
+}
+
+body.dark-mode .card-face {
+    border: 1px solid #4b0082;
+    box-shadow: 0 0 10px rgba(0,0,0,0.8), inset 0 0 5px rgba(255,255,255,0.1);
+}
+
+body.dark-mode .card-back { background-color: #1a0b2e; }
+
+body.dark-mode .card-front {
+    background-color: #0c0514;
+    border: 2px solid #551a8b;
+}
+
+body.dark-mode .card-front.gokucho-style {
+    border: 2px solid #ff0044;
+    box-shadow: 0 0 20px rgba(255,0,68,0.8) !important;
+}
+
+body.dark-mode .button-group button {
+    background-color: rgba(60, 10, 80, 0.8);
+    color: #ffb6c1;
+    border: 1px solid #ff007f;
+    box-shadow: 0 0 10px rgba(255, 0, 127, 0.3);
+    font-family: 'Shippori Mincho', 'Noto Serif JP', serif;
+}
+body.dark-mode .button-group button:hover:not(:disabled) {
+    background-color: rgba(100, 20, 120, 0.9);
+    box-shadow: 0 0 20px rgba(255, 0, 127, 0.8);
+}
+body.dark-mode .button-group button:disabled { background-color: #222; border-color: #555; color: #777; box-shadow: none; }
+body.dark-mode #resetButton { border-color: #dc3545; color: #ffcccc; background-color: rgba(220,53,69,0.3); }
+body.dark-mode #resetButton:hover:not(:disabled) { background-color: rgba(220,53,69,0.5); box-shadow: 0 0 20px rgba(220, 53, 69, 0.8); }
+body.dark-mode #openSettingsBtn { border-color: #a872cc; color: #eebbff; background-color: rgba(168,114,204,0.3); }
+body.dark-mode #openSettingsBtn:hover:not(:disabled) { background-color: rgba(168,114,204,0.5); box-shadow: 0 0 20px rgba(168, 114, 204, 0.8); }
+
+body.dark-mode .primary-btn {
+    background-color: rgba(255, 0, 127, 0.8);
+    color: white; border: none; box-shadow: 0 0 15px rgba(255, 0, 127, 0.4);
+    font-family: inherit; font-weight: bold;
+}
+body.dark-mode .primary-btn:hover:not(:disabled) { background-color: #ff007f; box-shadow: 0 0 25px rgba(255, 0, 127, 0.8); }
+body.dark-mode .primary-btn:disabled { background-color: #444; color: #888; box-shadow: none; }
+
+body.dark-mode .names-container label { color: #ffb6c1; }
+body.dark-mode .names-container input[type="text"],
+body.dark-mode .names-container select {
+    border: 1px solid #7733cc;
+    background-color: #2a113a; color: #fff;
+}
+
+body.dark-mode .grid-label { color: #eebbff; text-shadow: 0 0 5px rgba(238,187,255,0.5); }
+
+body.dark-mode .memory-game {
+    background: #0f3b20; /* テーブルゲーム風の落ち着いた深い緑 */
+    border-radius: 12px;
+    box-shadow: inset 0 0 30px rgba(0,0,0,0.8);
+}
+
+body.dark-mode .magic-board {
+    background: rgba(40, 10, 60, 0.7);
+    border: 2px dashed #a872cc;
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.8);
+}
+
+body.dark-mode .magic-board-btn {
+    background-color: rgba(60, 20, 90, 0.9);
+    color: #f1bafa; border: 1px solid #cd8fdf;
+    font-weight: normal; font-family: inherit;
+    box-shadow: 0 0 8px rgba(205,143,223,0.2);
+}
+body.dark-mode .magic-board-btn:hover:not(:disabled):not(.magic-turn-disabled) {
+    background-color: rgba(100, 30, 140, 1);
+    color: #fff; box-shadow: 0 0 15px rgba(205,143,223,0.6);
+}
+body.dark-mode .magic-board-btn[class*="magic-used-"] {
+    opacity: 1 !important;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+/* スクロールバーのカスタマイズ (ダークモードのみ) */
+html.dark-mode ::-webkit-scrollbar, body.dark-mode ::-webkit-scrollbar { width: 8px; }
+html.dark-mode ::-webkit-scrollbar-track, body.dark-mode ::-webkit-scrollbar-track { background: #0d0614; }
+html.dark-mode ::-webkit-scrollbar-thumb, body.dark-mode ::-webkit-scrollbar-thumb { background: #501b6b; border-radius: 4px; }
+html.dark-mode ::-webkit-scrollbar-thumb:hover, body.dark-mode ::-webkit-scrollbar-thumb:hover { background: #8e18ac; }

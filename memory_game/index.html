@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>まじかる神経衰弱</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- 設定モーダル -->
+    <div id="setup-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>まじかる神経衰弱</h2>
+
+            <div class="setup-columns">
+                <!-- 左カラム：プレイヤー設定 -->
+                <div class="setup-left">
+                    <div class="setup-group">
+                        <label for="playerCount">プレイヤー人数:</label>
+                        <select id="playerCount">
+                            <option value="1">1人</option>
+                            <option value="2" selected>2人</option>
+                            <option value="3">3人</option>
+                            <option value="4">4人</option>
+                        </select>
+                    </div>
+                    <div id="playerNamesContainer" class="names-container">
+                        <!-- 動的に生成 -->
+                    </div>
+                </div>
+
+                <!-- 右カラム：カード設定 -->
+                <div class="setup-right">
+                    <h3 style="margin-top:0;">📜 カード枚数設定</h3>
+                    <div id="cardTotals" style="font-weight: bold; margin-bottom: 15px; color: #8e18ac;">
+                        ペアの個数: <span id="pairsCount">15</span><br>カードの総数: <span id="totalCardsCount">30</span>
+                    </div>
+                    <div id="cardSetupArea"
+                        style="max-height: 250px; overflow-y: auto; text-align: left; margin-bottom: 20px; padding: 10px; border: 1px solid #eee; border-radius: 5px;">
+                        <!-- JSで動的に投入 -->
+                    </div>
+
+                    <div class="setup-group" style="margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 15px;">
+                        <label
+                            style="cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: bold; color: #8e18ac;">
+                            <input type="checkbox" id="enableSabbathCheckbox" style="transform: scale(1.3);">
+                            サバトの儀式をONにする
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div id="setupErrorMessage" style="color: #dc3545; font-weight: bold; margin-top: 5px; height: 1.5em;">
+            </div>
+            <button id="applySetupBtn" class="primary-btn" style="margin-top: 10px;">ゲームスタート</button>
+        </div>
+    </div>
+
+    <div class="container" id="game-container" style="display: none;">
+        <div class="game-header">
+            <h1> まじかる神経衰弱 </h1>
+            <div class="audio-controls">
+                <!-- ダークモード切替ボタン（一時非表示）
+                <div class="volume-group"
+                    style="margin-right: 15px; padding-right: 15px; border-right: 1px solid #ccc;">
+                    <label style="cursor: pointer;">
+                        <input type="checkbox" id="themeToggleBtn"> ダークモード
+                    </label>
+                </div>
+                -->
+                <button id="muteBtn" class="mute-btn" title="ミュート切替">🔊</button>
+                <div class="volume-group">
+                    <label>BGM</label>
+                    <input type="range" id="bgmVolumeSlider" class="volume-slider" min="0" max="1" step="0.05"
+                        value="0.1" title="BGM音量">
+                </div>
+                <div class="volume-group">
+                    <label>SE</label>
+                    <input type="range" id="seVolumeSlider" class="volume-slider" min="0" max="1" step="0.05"
+                        value="0.5" title="SE音量">
+                </div>
+            </div>
+        </div>
+
+        <div id="magic-board-container" class="magic-board">
+            <!-- JSで動的に8つの魔法ボタンが生成されます -->
+        </div>
+
+        <div id="sabbath-board-container" class="sabbath-board" style="display: none; margin-bottom: 20px;">
+            <!-- JSで儀式ON時のみボタンが生成されます -->
+        </div>
+
+        <div class="info" id="scoreBoardContainer">
+            <!-- JSで動的にスコアボックスが生成されます -->
+        </div>
+
+        <!-- 残りカードの表示エリア -->
+        <div id="remainingCardsContainer" class="remaining-cards-info"
+            style="font-size: 0.9em; text-align: center; margin-bottom: 10px; padding: 5px; border-radius: 5px; background: rgba(255,255,255,0.5);">
+            <!-- JSで動的に残り枚数が更新されます -->
+        </div>
+
+        <div id="message"></div>
+
+        <div class="memory-game" id="gameBoard">
+            <!-- カードが自動生成されます -->
+        </div>
+
+        <div class="button-group">
+            <button id="openSettingsBtn" class="secondary-btn">ゲーム設定</button>
+            <button id="resetButton" disabled>リセット</button>
+        </div>
+    </div>
+
+
+
+    <!-- 魔法の確認モーダル -->
+    <div id="magic-confirm-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2 id="magic-confirm-title"></h2>
+            <p id="magic-confirm-desc"></p>
+            <div class="confirm-btn-group">
+                <button id="executeMagicBtn" class="primary-btn">発動する！</button>
+                <button id="cancelMagicBtn" class="cancel-btn">やめる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 宝生マーゴ推し変更モーダル -->
+    <div id="mago-modal" class="modal-overlay" style="display: none; transition: background-color 0.2s;">
+        <div class="modal-content" id="mago-modal-content" style="transition: opacity 0.2s;">
+            <h2>新しい推しキャラを選択</h2>
+            <select id="newOshiSelect" class="mago-select"></select>
+            <div style="margin-top: 20px; display: flex; justify-content: space-between; gap: 10px;">
+                <button id="peekBoardBtn" class="cancel-btn" style="flex: 1;">盤面を確認する<span
+                        style="font-size: 0.7em;">(クリック中のみ)</span></button>
+                <button id="applyMagoBtn" class="primary-btn" style="flex: 1;">決定</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
