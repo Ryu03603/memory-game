@@ -4,6 +4,7 @@ const openSettingsBtn = document.getElementById('openSettingsBtn');
 const resetButton = document.getElementById('resetButton');
 const messageDisplay = document.getElementById('message');
 const scoreBoardContainer = document.getElementById('scoreBoardContainer');
+const undoBtn = document.getElementById('undoBtn');
 
 // 設定モーダル要素
 const setupModal = document.getElementById('setup-modal');
@@ -12,6 +13,10 @@ const playerCountSelect = document.getElementById('playerCount');
 const playerNamesContainer = document.getElementById('playerNamesContainer');
 const applySetupBtn = document.getElementById('applySetupBtn');
 
+// 1手戻る（Admin）モードと履歴
+let isAdminMode = false;
+let turnHistory = null;
+
 // 設定：カード枚数設定領域
 const cardSetupArea = document.getElementById('cardSetupArea');
 const pairsCountSpan = document.getElementById('pairsCount');
@@ -19,6 +24,8 @@ const totalCardsCountSpan = document.getElementById('totalCardsCount');
 const setupErrorMessage = document.getElementById('setupErrorMessage');
 const themeToggleBtn = document.getElementById('themeToggleBtn');
 let cardSettings = {};
+
+const gridColsInput = document.getElementById('gridColsInput');
 
 // 魔法要素
 const magicBoardContainer = document.getElementById('magic-board-container');
@@ -215,6 +222,7 @@ function initializeCardSettings() {
         const input = document.createElement('input');
         input.type = 'number';
         input.min = '0';
+        input.max = '30';
         input.step = '2'; // ペア制のため2枚単位
         input.value = defaultCount;
         input.style.width = '60px';
@@ -223,8 +231,10 @@ function initializeCardSettings() {
         input.addEventListener('change', (e) => {
             let val = parseInt(e.target.value, 10);
             if (isNaN(val) || val < 0) val = 0;
+            if (val > 30) val = 30; // 最大30枚に制限
             // 片方だけにならないよう偶数に補正
             if (val % 2 !== 0) val += 1;
+            if (val > 30) val = 30; // 補正後に30を超えないようにする
             e.target.value = val;
 
             cardSettings[char] = val;
@@ -276,6 +286,13 @@ function updateCardTotals() {
 function applySetup() {
     const count = parseInt(playerCountSelect.value, 10);
     isSabbathEnabled = document.getElementById('enableSabbathCheckbox').checked;
+    
+    // 管理モードの取得
+    const adminModeCheckbox = document.getElementById('adminModeCheckbox');
+    isAdminMode = adminModeCheckbox ? adminModeCheckbox.checked : false;
+    if (undoBtn) {
+        undoBtn.style.display = isAdminMode ? 'inline-block' : 'none';
+    }
 
     players = [];
     for (let i = 0; i < count; i++) {
@@ -389,8 +406,8 @@ function initializeSabbathBoard() {
     btn.style.color = '#fff';
     btn.style.borderColor = '#ff4d4d';
     btn.style.fontWeight = 'bold';
-    btn.textContent = 'サバトの儀式を実行（1ゲーム中1回のみ）';
-    btn.dataset.tooltip = '一巡(プレイヤー数分)の間、すべてのゴクチョーが月代ユキに変化します。\n月代ユキを揃えると+2ポイントを獲得してターンが終了します。';
+    btn.textContent = 'サバトの儀式を実行（各プレイヤー1回のみ）';
+    btn.dataset.tooltip = '発動したターンの間、すべてのゴクチョーが月代ユキに変化します。\n月代ユキを揃えると+2ポイントを獲得し、そのまま自分のターンが継続します。';
 
     btn.addEventListener('click', () => {
         if (!isGameActive || boardLock) return;
@@ -415,6 +432,10 @@ function updateMagicUI() {
     const btns = magicBoardContainer.querySelectorAll('.magic-board-btn');
     // アニメーション中や他の魔法を実行中以外は「いつでも（1枚引いた状態でも）」使用可能とする
     const isTemporarilyLocked = (magicState !== 0 || boardLock === true);
+    
+    // 「1枚戻す」操作が可能かどうかの判定
+    const canUndo1stCard = (firstCard && !secondCard && !boardLock && magicState === 0);
+    const canUndoHistory = (turnHistory !== null);
 
     btns.forEach(btn => {
         const key = btn.dataset.magicKey;
@@ -422,20 +443,51 @@ function updateMagicUI() {
 
         if (key === "氷上メルル（治癒）") {
             // メルルのみ：1枚目のカードが引かれていて、2枚目が引かれていない（かつロック中ではない）状態でのみ利用可能
-            if (!firstCard || secondCard || isTemporarilyLocked || playerAlreadyUsedThis) {
+            if (!canUndo1stCard || playerAlreadyUsedThis) {
                 btn.classList.add('magic-turn-disabled');
+                btn.disabled = true;
             } else {
                 btn.classList.remove('magic-turn-disabled');
+                btn.disabled = false;
             }
         } else {
             // その他の既存の魔法は従来の条件（一時ロック中か使用済みの場合は無効）
             if (isTemporarilyLocked || playerAlreadyUsedThis) {
                 btn.classList.add('magic-turn-disabled');
+                btn.disabled = true;
             } else {
                 btn.classList.remove('magic-turn-disabled');
+                btn.disabled = false;
             }
         }
     });
+
+    // 「1枚戻す」ボタンの状態更新（管理モード時のみ）
+    if (undoBtn && isAdminMode) {
+        undoBtn.disabled = !(canUndo1stCard || canUndoHistory);
+    }
+
+    // サバトの儀式ボタンの状態更新
+    const sabbathBtn = document.getElementById('sabbathTriggerBtn');
+    if (sabbathBtn) {
+        const usedSabbath = players[currentPlayerIndex].usedMagics.includes("サバトの儀式");
+        if (sabbathActive) {
+            sabbathBtn.disabled = true;
+            sabbathBtn.textContent = 'サバトの儀式を実行中';
+            sabbathBtn.classList.add('magic-used-btn');
+            sabbathBtn.style.opacity = '0.5';
+        } else if (usedSabbath) {
+            sabbathBtn.disabled = true;
+            sabbathBtn.textContent = 'サバトの儀式 ✔';
+            sabbathBtn.classList.add('magic-used-btn');
+            sabbathBtn.style.opacity = '0.5';
+        } else {
+            sabbathBtn.disabled = isTemporarilyLocked;
+            sabbathBtn.textContent = 'サバトの儀式を実行（各プレイヤー1回のみ）';
+            sabbathBtn.classList.remove('magic-used-btn');
+            sabbathBtn.style.opacity = '1';
+        }
+    }
 }
 
 function showMagicConfirm(magicKey) {
@@ -535,6 +587,13 @@ function executeShelleyMagic() {
 
         unmatchedCards.forEach((card, i) => {
             card.dataset.value = values[i];
+            
+            // 内部データ(allCardsData)も同期させて残り枚数計算のズレを防ぐ
+            const dataIndex = parseInt(card.dataset.index);
+            if (!isNaN(dataIndex) && allCardsData[dataIndex]) {
+                allCardsData[dataIndex].value = values[i];
+            }
+
             const imgEl = card.querySelector('.card-front img');
             if (values[i] === GOKUCHO) {
                 imgEl.src = GOKUCHO_IMAGE;
@@ -624,9 +683,10 @@ function createBoard(values) {
     const totalCards = values.length;
     if (totalCards === 0) return; // カード0枚のときは生成しない
 
-    // 適切な列数を計算（最大10列目安）
-    let cols = Math.ceil(Math.sqrt(totalCards));
-    if (cols > 10) cols = 10;
+    // ユーザーが設定した列数を取得
+    let cols = parseInt(gridColsInput.value, 10) || 6;
+    const rows = Math.ceil(totalCards / cols);
+
     // CSS変数を設定し、要素幅に合わせて動的にグリッド比率を変更する
     gameBoard.style.setProperty('--dynamic-cols', cols);
 
@@ -634,7 +694,6 @@ function createBoard(values) {
     for (let i = 0; i < cols; i++) {
         columns.push(String.fromCharCode(65 + i)); // A, B, C...
     }
-    const rows = Math.ceil(totalCards / cols);
 
     // 左上の空白
     const emptyCorner = document.createElement('div');
@@ -717,6 +776,9 @@ function flipCard(event) {
     card.classList.add('flipped');
 
     if (!firstCard) {
+        // 次のアクション（1枚目めくり）が始まったら過去の履歴は破棄
+        turnHistory = null;
+
         firstCard = card;
         updateMagicUI();
         return;
@@ -834,6 +896,18 @@ function checkForMatch() {
     const char2 = secondCard.dataset.value;
     const isMatch = (char1 === char2);
 
+    // 巻き戻し用の履歴オブジェクトを初期化
+    turnHistory = {
+        playerIndex: currentPlayerIndex,
+        firstCardIndex: parseInt(firstCard.dataset.index),
+        secondCardIndex: parseInt(secondCard.dataset.index),
+        isMatch: isMatch,
+        scoreChange: 0,
+        matchedPairsChange: 0,
+        sabbathTurnsChange: 0,
+        timeoutId: null
+    };
+
     if (isMatch) {
         matchCards(char1);
     } else {
@@ -842,6 +916,9 @@ function checkForMatch() {
 }
 
 function matchCards(char) {
+    const pIndex = currentPlayerIndex;
+    const oldScore = players[pIndex].score;
+
     firstCard.style.setProperty('--p-color', players[currentPlayerIndex].color);
     secondCard.style.setProperty('--p-color', players[currentPlayerIndex].color);
     firstCard.classList.add('matched', 'custom-matched');
@@ -853,29 +930,35 @@ function matchCards(char) {
     allCardsData[index2].matched = true;
 
     matchedPairs++;
+    if (turnHistory) turnHistory.matchedPairsChange = 1;
 
     if (char === GOKUCHO) {
-        players[currentPlayerIndex].score = Math.max(0, players[currentPlayerIndex].score - 3);
+        players[pIndex].score = Math.max(0, players[pIndex].score - 3);
         messageDisplay.textContent = 'ゴクチョー！ -3ポイント（強制ターン交代）';
     } else if (char === YUKI) {
-        players[currentPlayerIndex].score += 2;
-        messageDisplay.textContent = '月代ユキ！ +2ポイント獲得！（ターン交代）';
+        players[pIndex].score += 2;
+        messageDisplay.textContent = '月代ユキ！ +2ポイント獲得！（もう一度カードを引けます）';
     } else {
-        if (char === players[currentPlayerIndex].bonusChar) {
-            players[currentPlayerIndex].score += 4;
+        if (char === players[pIndex].bonusChar) {
+            players[pIndex].score += 4;
             messageDisplay.textContent = '推しキャラボーナス発動！✨ +4ポイント！（もう一度）';
         } else {
-            players[currentPlayerIndex].score += 2;
+            players[pIndex].score += 2;
             messageDisplay.textContent = 'マッチ！ +2ポイント（もう一度カードを引けます）';
         }
+    }
+    
+    if (turnHistory) {
+        turnHistory.scoreChange = players[pIndex].score - oldScore;
     }
 
     updateScoreDisplay();
 
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
+        if (turnHistory) turnHistory.timeoutId = null;
         resetBoard();
 
-        if (char === GOKUCHO || char === YUKI) {
+        if (char === GOKUCHO) {
             if (players.length > 1) {
                 switchTurn();
             } else {
@@ -889,11 +972,14 @@ function matchCards(char) {
         }
         checkGameEnd();
     }, 1000);
+
+    if (turnHistory) turnHistory.timeoutId = timeoutId;
 }
 
 function unflipCards() {
     messageDisplay.textContent = '不一致... ターン交代します';
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
+        if (turnHistory) turnHistory.timeoutId = null;
         firstCard.classList.remove('flipped');
         secondCard.classList.remove('flipped');
 
@@ -907,6 +993,8 @@ function unflipCards() {
             updateMagicUI();
         }
     }, 1000);
+    
+    if (turnHistory) turnHistory.timeoutId = timeoutId;
 }
 
 function resetBoard() {
@@ -916,11 +1004,10 @@ function resetBoard() {
 }
 
 function handleTurnEnd() {
+    // ターン終了時にサバトが発動中なら解除
     if (sabbathActive) {
-        sabbathTurnsRemaining--;
-        if (sabbathTurnsRemaining <= 0) {
-            deactivateSabbathRitual();
-        }
+        deactivateSabbathRitual();
+        if (turnHistory) turnHistory.sabbathDeactivated = true;
     }
 }
 
@@ -1129,6 +1216,91 @@ function initializeGame() {
     });
     peekBoardBtn.addEventListener('touchend', hidePeek);
     peekBoardBtn.addEventListener('touchcancel', hidePeek);
+
+    // 1枚戻す（Undo）機能
+    if (undoBtn) {
+        undoBtn.addEventListener('click', () => {
+            if (firstCard && !secondCard && !boardLock && magicState === 0) {
+                // 1枚目のキャンセル
+                firstCard.classList.remove('flipped');
+                firstCard = null;
+                updateMagicUI();
+                messageDisplay.textContent = `カードを1枚戻しました。引き直してください。`;
+            } else if (turnHistory !== null) {
+                // 2枚目めくり後の巻き戻し
+                undoLastMove();
+            }
+        });
+    }
+}
+
+function undoLastMove() {
+    if (!turnHistory) return;
+
+    // 1. タイムアウトのキャンセル
+    if (turnHistory.timeoutId) {
+        clearTimeout(turnHistory.timeoutId);
+    }
+
+    const c1 = allCardsData[turnHistory.firstCardIndex].element;
+    const c2 = allCardsData[turnHistory.secondCardIndex].element;
+
+    // 2. マッチ状態の巻き戻し
+    if (turnHistory.isMatch) {
+        c1.classList.remove('matched', 'custom-matched');
+        c2.classList.remove('matched', 'custom-matched');
+        c1.style.removeProperty('--p-color');
+        c2.style.removeProperty('--p-color');
+        allCardsData[turnHistory.firstCardIndex].matched = false;
+        allCardsData[turnHistory.secondCardIndex].matched = false;
+        matchedPairs -= turnHistory.matchedPairsChange;
+    }
+
+    // 3. スコアの巻き戻し
+    players[turnHistory.playerIndex].score -= turnHistory.scoreChange;
+
+    // 4. サバト状態の巻き戻し
+    if (turnHistory.sabbathDeactivated) {
+        sabbathActive = true;
+        // 月代ユキに戻す
+        allCardsData.forEach(data => {
+            if (!data.matched && data.value === GOKUCHO) {
+                data.value = YUKI;
+                data.element.dataset.value = YUKI;
+                const imgEl = data.element.querySelector('.card-front img');
+                imgEl.src = YUKI_IMAGE;
+                toggleGokuchoStyle(data.element, YUKI);
+            }
+        });
+        updateRemainingCardsUI();
+    }
+
+    // 5. ターンの巻き戻し
+    currentPlayerIndex = turnHistory.playerIndex;
+    
+    // 6. カードを「1枚目だけめくった状態」に戻す
+    c2.classList.remove('flipped');
+    c1.classList.add('flipped');
+    firstCard = c1;
+    secondCard = null;
+    boardLock = false;
+
+    // 履歴は1回しか戻せないため破棄
+    turnHistory = null;
+
+    // 7. UIの更新
+    updateScoreDisplay();
+    players.forEach((p, idx) => {
+        const box = document.getElementById(`p${idx}-score-box`);
+        if (idx === currentPlayerIndex) {
+            box.classList.add('active-player');
+        } else {
+            box.classList.remove('active-player');
+        }
+    });
+
+    messageDisplay.textContent = `1手戻しました。${players[currentPlayerIndex].name} のターン継続`;
+    updateMagicUI();
 }
 
 function startGame() {
@@ -1139,6 +1311,7 @@ function startGame() {
 
     isGameActive = true;
     magicState = 0;
+    turnHistory = null; // ゲーム開始時に履歴をリセット
     document.body.classList.remove('magic-standby-coco', 'magic-standby-miria');
 
     players.forEach(p => { p.score = 0; p.usedMagics = []; });
@@ -1173,6 +1346,7 @@ function resetGame() {
     // サバトの儀式のリセット
     sabbathActive = false;
     sabbathTurnsRemaining = 0;
+    turnHistory = null; // リセット時に履歴をクリア
 
     startGame();
     messageDisplay.textContent = 'ゲームをリセットしました。' + messageDisplay.textContent;
@@ -1186,15 +1360,14 @@ function activateSabbathRitual(btn) {
     if (sabbathActive) return;
 
     playSound(bellSound); // 専用の鐘の音を使用
-    btn.disabled = true;
-    btn.textContent = 'サバトの儀式を実行 ✔';
-    btn.classList.add('magic-used-btn');
-    btn.style.opacity = '0.5';
-
+    
+    // 現在のプレイヤーの使用履歴に追加
+    players[currentPlayerIndex].usedMagics.push("サバトの儀式");
+    
     sabbathActive = true;
-    sabbathTurnsRemaining = players.length; // 人数＝一巡
+    updateMagicUI();
 
-    messageDisplay.textContent = `【サバトの儀式 実行】今から一巡の間、すべてのゴクチョーが月代ユキに変わります！`;
+    messageDisplay.textContent = `【サバトの儀式 実行】このターンの間、すべてのゴクチョーが月代ユキに変わります！`;
 
     // 盤面の未マッチのゴクチョーを月代ユキに書き換える
     allCardsData.forEach(data => {
@@ -1228,6 +1401,11 @@ function deactivateSabbathRitual() {
             toggleGokuchoStyle(data.element, GOKUCHO);
         }
     });
+
+    const btn = document.getElementById('sabbathTriggerBtn');
+    if (btn) {
+        btn.textContent = 'サバトの儀式 ✔';
+    }
 
     updateRemainingCardsUI();
 }
